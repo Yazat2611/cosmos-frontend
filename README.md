@@ -1,16 +1,32 @@
-# React + Vite
+# Cosmos Hub frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React + Vite interface for the Cosmos Hub backend: upcoming asteroid close approaches, asteroid orbits, and NASA Earth events on a 3D globe.
 
-Currently, two official plugins are available:
+## Run it
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. Start PostgreSQL and the backend (`Cosmos-Backend`) on port 8080:
 
-## React Compiler
+   ```bash
+   mvn spring-boot:run
+   ```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+2. Start the frontend:
 
-## Expanding the Oxlint configuration
+   ```bash
+   npm install
+   npm run dev
+   ```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+3. Open http://localhost:5173.
+
+The Vite dev server proxies `/api` to `http://localhost:8080`, so the backend needs no CORS setup in development. Set `VITE_API_TARGET` to proxy somewhere else. A production build needs `VITE_API_URL` pointing at a backend that allows this site's origin.
+
+## How the data flows
+
+| Screen | Endpoint |
+| --- | --- |
+| Overview, Close approaches | `GET /api/asteroids/all` |
+| Asteroid panel, hazard badges | `GET /api/asteroids/details/{designation}` |
+| Earth events | `GET /api/earth-events` |
+
+Hazard status isn't in the approaches list. The app looks up objects with H <= 22 (only those can be potentially hazardous) two at a time, and caches the results in the browser for a week.

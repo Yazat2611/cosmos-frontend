@@ -3,11 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>cosmos-frontend</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Cosmos Hub</title>
   </head>
   <body>
+    <canvas class="starfield" id="starfield" aria-hidden="true"></canvas>
     <div id="root"></div>
+    <div class="tooltip" id="tooltip" role="tooltip"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
