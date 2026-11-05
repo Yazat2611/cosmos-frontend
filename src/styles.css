@@ -130,7 +130,7 @@ kbd {
 .search-trigger:active { transform: scale(0.98); }
 @media (hover: hover) and (pointer: fine) { .search-trigger:hover { background: var(--surface-hover); } }
 
-.view { padding: 28px; max-width: 1280px; width: 100%; outline: none; }
+.view { padding: 28px; width: 100%; outline: none; }
 
 /* ---------- Primitives ---------- */
 .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 22px; flex-wrap: wrap; }
@@ -591,3 +591,20 @@ kbd {
 
 /* ---------- App states ---------- */
 .notice { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; margin-bottom: 16px; border-radius: 12px; background: var(--pha-soft); box-shadow: var(--ring); font-size: 13.5px; }
+
+/* ---------- Phones: filters and the view toggle sit above the map instead of covering it ---------- */
+@media (max-width: 760px) {
+  .map-card { display: flex; flex-direction: column; }
+  .map-overlay { position: static; order: -1; padding: 12px 12px 4px; }
+  .map-overlay .chip, .map-tools .seg, .map-tools .btn { backdrop-filter: none; }
+}
+
+/* ---------- Wide screens: content fills the window instead of stopping at a fixed width ---------- */
+@media (min-width: 1700px) {
+  .view { padding: 32px 40px; }
+  .ov-grid { gap: 20px; }
+  .hero-art { min-height: 360px; }
+  .timeline-wrap { height: 320px; }
+  .earth-layout { grid-template-columns: minmax(0, 1fr) 420px; }
+  .globe-wrap { height: clamp(520px, 38vw, 760px); }
+}
