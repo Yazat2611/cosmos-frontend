@@ -4,7 +4,8 @@ import { toDate } from './format.js'
 const BASE = import.meta.env.VITE_API_URL || ''
 
 async function request(path, options) {
-  const res = await fetch(`${BASE}/api${path}`, options)
+  // Give up instead of loading forever if the backend never answers
+  const res = await fetch(`${BASE}/api${path}`, { signal: AbortSignal.timeout(45000), ...options })
   if (!res.ok) throw new Error(`Request to ${path} failed with status ${res.status}`)
   const type = res.headers.get('content-type') || ''
   return type.includes('json') ? res.json() : res.text()
