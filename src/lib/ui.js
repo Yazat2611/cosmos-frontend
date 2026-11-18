@@ -6,7 +6,7 @@ const subscribe = (cb) => {
   window.addEventListener('hashchange', cb)
   return () => window.removeEventListener('hashchange', cb)
 }
-const PAGES = ['overview', 'asteroids', 'earth']
+const PAGES = ['overview', 'explorer', 'asteroids', 'earth']
 export function parseHash(hash) {
   const [, page = 'overview', ...rest] = hash.replace(/^#/, '').split('/')
   return { page: PAGES.includes(page) ? page : 'overview', sub: rest.length ? decodeURIComponent(rest.join('/')) : null }
