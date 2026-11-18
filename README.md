@@ -41,3 +41,23 @@ Click a body or pick it from the list to fly to it. The strip along the bottom i
 ## Earth events globe
 
 `#/earth` is a full-screen 3D globe (three.js, lazy-loaded) built from `GET /api/earth-events`. Land is drawn as a dot matrix from the same outline the Overview map uses, and the lit side follows the real position of the Sun. Events pulse in their category colour; storms and drifting ice show their reported track. Filter by category, open an event for its details (storms get a wind chart with category 1 and 4 thresholds), or switch to **Replay** to play the last few weeks back day by day.
+
+## Deploy to production
+
+The frontend runs as an nginx container that serves the build and forwards `/api` to the backend over a shared Docker network called `cosmos`. The browser only ever talks to the frontend, so the backend needs no CORS config and its port can stay private.
+
+On the server, with both repos checked out at the latest `master`:
+
+```bash
+# Backend (creates the cosmos network and the backend + database)
+cd Cosmos-Backend && git checkout master && git pull && docker compose up -d --build
+
+# Frontend
+cd ../cosmos-frontend && git checkout master && git pull && docker compose build --no-cache && docker compose up -d
+```
+
+Open the server on port 80 and check that the bottom-left pill says "Connected". To redeploy after a merge, repeat the frontend lines. `index.html` is never cached, so a normal reload picks up the new release.
+
+- `BACKEND_URL` (default `http://backend:8080`) is where nginx forwards `/api`. Point it elsewhere, such as `http://10.0.0.5:8080`, if the backend runs on another host.
+- `FRONTEND_PORT` (default `80`) is the host port for the site.
+- `VITE_API_URL` is a build arg for calling a backend directly from the browser instead. It is only useful once the backend allows this site's origin through CORS, so leave it empty.

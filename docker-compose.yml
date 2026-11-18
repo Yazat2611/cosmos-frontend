@@ -1,0 +1,21 @@
+# Frontend for production. It joins the backend's Docker network ("cosmos") and
+# proxies /api to it, so the backend needs no CORS setup and no public port.
+#
+#   1. Start the backend first (Cosmos-Backend: docker compose up -d --build)
+#   2. Then here: docker compose up -d --build
+#
+# The site is served on port 80 (change FRONTEND_PORT to use another).
+services:
+  frontend:
+    build: .
+    image: cosmos-frontend
+    restart: unless-stopped
+    environment:
+      BACKEND_URL: ${BACKEND_URL:-http://backend:8080}
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+
+networks:
+  default:
+    name: cosmos
+    external: true
