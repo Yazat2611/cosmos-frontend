@@ -157,7 +157,7 @@ export default function App() {
               </button>
             </div>
           </header>
-          <main className={page === 'explorer' ? 'view view-full' : 'view'} ref={viewRef} tabIndex={-1} key={page}>
+          <main className={page === 'explorer' || page === 'earth' ? 'view view-full' : 'view'} ref={viewRef} tabIndex={-1} key={page}>
             {page === 'overview' && <Overview />}
             {page === 'explorer' && <Explorer sub={sub} />}
             {page === 'asteroids' && <Asteroids activeDes={sub} />}

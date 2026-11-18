@@ -36,4 +36,8 @@ Hazard status isn't in the approaches list. The app looks up objects with H <= 2
 
 `#/explorer` is an interactive 3D view of the solar system built with three.js (`@react-three/fiber` and `drei`). Planets move on JPL's approximate Keplerian elements (valid 1800–2050); asteroids use the SBDB elements the backend returns. A built-in set of well-known asteroids (Apophis, Bennu, Ceres and others) is always shown, so the view works with the backend offline; their elements are rounded, so their positions are illustrative. The main belt is a decorative, seeded field.
 
-Click a body or pick it from the list to fly to it. Space pauses time, the arrows change speed and direction, the date field jumps to any day, and "Go to date" jumps to an asteroid's close approach. The 3D code is lazy-loaded, so other pages don't pay for it.
+Click a body or pick it from the list to fly to it. The strip along the bottom is a timeline of upcoming close approaches from the backend (or the closest passes of the sample orbits when it's offline); clicking one jumps to that date. Space pauses time, the arrows change speed and direction, and the date field jumps to any day. Asteroid and planet panels chart the distance from Earth over a year. The 3D code is lazy-loaded, so other pages don't pay for it.
+
+## Earth events globe
+
+`#/earth` is a full-screen 3D globe (three.js, lazy-loaded) built from `GET /api/earth-events`. Land is drawn as a dot matrix from the same outline the Overview map uses, and the lit side follows the real position of the Sun. Events pulse in their category colour; storms and drifting ice show their reported track. Filter by category, open an event for its details (storms get a wind chart with category 1 and 4 thresholds), or switch to **Replay** to play the last few weeks back day by day.

@@ -26,27 +26,123 @@ function useClockDate(clock) {
   return ms
 }
 
-function TimeBar({ clock, rate, setRate }) {
+// Closest passes to Earth in a window: real dates from the backend when it has them, else scanned from the sample orbits
+function useApproaches(asteroids) {
+  return useMemo(() => {
+    const now = Date.now()
+    const live = asteroids.filter((a) => a.approach && a.approach.date > now)
+      .map((a) => ({ obj: a, ms: a.approach.date.getTime(), au: a.approach.distanceAu }))
+    if (live.length) {
+      const end = Math.max(...live.map((x) => x.ms))
+      return { list: live, start: now, end: Math.max(end + 2 * 864e5, now + 30 * 864e5), live: true }
+    }
+    const end = now + 365 * 864e5
+    const list = asteroids.map((a) => {
+      let best = { au: Infinity, k: 0 }
+      for (let k = 0; k <= 365; k++) {
+        const jd = jdFromMs(now + k * 864e5)
+        const d = dist(positionAt(a.el, jd, [0, 0, 0]), positionAt(PLANETS[2], jd, [0, 0, 0]))
+        if (d < best.au) best = { au: d, k }
+      }
+      // A minimum at either end of the window is not a pass
+      return best.k > 0 && best.k < 365 ? { obj: a, ms: now + best.k * 864e5, au: best.au } : null
+    }).filter(Boolean)
+    return { list, start: now, end, live: false }
+  }, [asteroids])
+}
+
+const MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+function Timeline({ clock, rate, setRate, approaches, selected, onPick }) {
   const ms = useClockDate(clock)
   const idx = RATES.indexOf(rate)
   const step = (d) => setRate(RATES[Math.max(0, Math.min(RATES.length - 1, idx + d))])
   const d = new Date(ms)
   const iso = d.toISOString().slice(0, 10)
   const offset = Math.round((ms - Date.now()) / 864e5)
+  const { list, start, end, live } = approaches
+  const x = (t) => ((t - start) / (end - start)) * 100
+  const maxLog = Math.log10(Math.max(1, ...list.map((a) => toLd(a.au))) + 1)
+  const ticks = []
+  const t0 = new Date(start)
+  const daily = end - start < 100 * 864e5
+  for (let k = 0; ; k++) {
+    const t = daily ? Date.UTC(t0.getUTCFullYear(), t0.getUTCMonth(), t0.getUTCDate() + 7 * k + 1) : Date.UTC(t0.getUTCFullYear(), t0.getUTCMonth() + k + 1, 1)
+    if (t > end) break
+    const td = new Date(t)
+    ticks.push([t, daily ? `${td.getUTCDate()} ${MONTH[td.getUTCMonth()]}` : MONTH[td.getUTCMonth()]])
+  }
+  const cursor = x(ms)
   return (
-    <div className="x-time" role="group" aria-label="Time controls">
-      <div className="x-date">
-        <input type="date" aria-label="Jump to date" value={iso} min="1900-01-01" max="2100-12-31"
-          onChange={(e) => { const t = Date.parse(`${e.target.value}T00:00:00Z`); if (Number.isFinite(t)) clock.ms = t }} />
-        <span className="faint num">{d.toISOString().slice(11, 16)} UTC{offset !== 0 && ` · ${offset > 0 ? '+' : ''}${offset.toLocaleString()} d`}</span>
+    <section className="x-timeline" aria-label="Time controls and upcoming close approaches">
+      <div className="x-tl-head">
+        <div className="x-date">
+          <input type="date" aria-label="Jump to date" value={iso} min="1900-01-01" max="2100-12-31"
+            onChange={(e) => { const t = Date.parse(`${e.target.value}T00:00:00Z`); if (Number.isFinite(t)) clock.ms = t }} />
+          <span className="faint num">{offset === 0 ? `${d.toISOString().slice(11, 16)} UTC · today` : `${offset > 0 ? '+' : '−'}${Math.abs(offset).toLocaleString()} days from today`}</span>
+        </div>
+        <div className="x-tl-title faint">{live ? 'Upcoming close approaches' : 'Closest passes in the next year · sample orbits'}</div>
+        <div className="x-rates">
+          <button type="button" className="icon-btn" aria-label="Slower or reverse" onClick={() => step(-1)} disabled={idx === 0}><Icon name="rewind" /></button>
+          <button type="button" className="icon-btn x-play" aria-label={rate === 0 ? 'Play' : 'Pause'} onClick={() => setRate(rate === 0 ? 1 : 0)}><Icon name={rate === 0 ? 'play' : 'pause'} /></button>
+          <button type="button" className="icon-btn" aria-label="Faster" onClick={() => step(1)} disabled={idx === RATES.length - 1}><Icon name="forward" /></button>
+          <span className="x-rate num">{rateLabel(rate)}</span>
+        </div>
+        <button type="button" className="btn" onClick={() => { clock.ms = Date.now(); setRate(1) }}>Today</button>
       </div>
-      <div className="x-rates">
-        <button type="button" className="icon-btn" aria-label="Slower or reverse" onClick={() => step(-1)} disabled={idx === 0}><Icon name="rewind" /></button>
-        <button type="button" className="icon-btn x-play" aria-label={rate === 0 ? 'Play' : 'Pause'} onClick={() => setRate(rate === 0 ? 1 : 0)}><Icon name={rate === 0 ? 'play' : 'pause'} /></button>
-        <button type="button" className="icon-btn" aria-label="Faster" onClick={() => step(1)} disabled={idx === RATES.length - 1}><Icon name="forward" /></button>
-        <span className="x-rate num">{rateLabel(rate)}</span>
+      <div className="x-track">
+        {ticks.map(([t, l]) => <span key={t} className="x-tick" style={{ left: `${x(t)}%` }}>{l}</span>)}
+        {list.map((a) => {
+          const h = 14 + (1 - Math.log10(toLd(a.au) + 1) / maxLog) * 44
+          const p = x(a.ms)
+          const edge = p < 8 ? ' is-l' : p > 92 ? ' is-r' : ''
+          return (
+            <button key={a.obj.id} type="button" className={`x-ev${a.obj.pha ? ' is-pha' : ''}${selected === a.obj.id ? ' is-on' : ''}${edge}`}
+              style={{ left: `${p}%`, '--h': `${h.toFixed(0)}px` }}
+              aria-label={`${a.obj.fullName}, ${absDate(new Date(a.ms))}, ${fmtLd(a.au)} lunar distances`}
+              onClick={() => { clock.ms = a.ms; setRate(0); onPick(a.obj.id) }}>
+              <span className="stem" />
+              <span className="tip">{a.obj.fullName}<br /><span className="num">{absDate(new Date(a.ms), false)} · {fmtLd(a.au)} LD</span></span>
+            </button>
+          )
+        })}
+        {cursor >= 0 && cursor <= 100 && <div className="x-cursor" style={{ left: `${cursor}%` }} />}
       </div>
-      <button type="button" className="btn" onClick={() => { clock.ms = Date.now(); setRate(1) }}>Now</button>
+    </section>
+  )
+}
+
+// Distance from Earth over a year centred on the shown date
+function DistanceChart({ obj, ms }) {
+  const W = 300, H = 92, n = 120, from = ms - 182 * 864e5
+  const el = obj.kind === 'planet' ? obj : obj.el
+  const vals = []
+  for (let k = 0; k <= n; k++) {
+    const jd = jdFromMs(from + (k / n) * 365 * 864e5)
+    vals.push(dist(positionAt(el, jd, [0, 0, 0]), positionAt(PLANETS[2], jd, [0, 0, 0])))
+  }
+  const max = Math.max(...vals) * 1.08
+  const px = (k) => (k / n) * W
+  const py = (v) => H - 14 - (v / max) * (H - 24)
+  const line = vals.map((v, k) => `${k ? 'L' : 'M'}${px(k).toFixed(1)},${py(v).toFixed(1)}`).join('')
+  const mi = vals.indexOf(Math.min(...vals))
+  const color = obj.kind === 'planet' ? obj.color : obj.pha ? 'var(--pha)' : 'var(--accent)'
+  const anchor = px(mi) > W - 60 ? 'end' : px(mi) < 60 ? 'start' : 'middle'
+  const short = (t) => { const x = new Date(t); return `${x.getUTCDate()} ${MONTH[x.getUTCMonth()]}` }
+  const minLabel = vals[mi] < 0.05 ? `${fmtLd(vals[mi])} LD` : `${vals[mi].toFixed(3)} AU`
+  return (
+    <div className="x-chart">
+      <div className="faint">Distance from Earth · ±6 months</div>
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Distance from Earth over a year; closest ${minLabel} on ${short(from + (mi / n) * 365 * 864e5)}`}>
+        <path d={`${line}L${W},${H - 14}L0,${H - 14}Z`} fill="var(--accent-soft)" />
+        <path d={line} fill="none" stroke={color} strokeWidth="1.5" />
+        <line x1={W / 2} x2={W / 2} y1="4" y2={H - 14} stroke="var(--text-3)" strokeDasharray="2 3" />
+        <circle cx={px(mi)} cy={py(vals[mi])} r="3" fill={color} />
+        <text x={Math.min(W - 2, Math.max(2, px(mi)))} y={Math.max(10, py(vals[mi]) - 6)} textAnchor={anchor}>{minLabel}</text>
+        <text x="0" y={H - 2}>{short(from)}</text>
+        <text x={W / 2} y={H - 2} textAnchor="middle">Shown date</text>
+        <text x={W} y={H - 2} textAnchor="end">{short(from + 365 * 864e5)}</text>
+      </svg>
     </div>
   )
 }
@@ -83,6 +179,7 @@ function Info({ obj, clock, setRate, onClose }) {
         <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}><Icon name="close" /></button>
       </header>
       {obj.note && <p className="muted x-note">{obj.note}</p>}
+      {obj.kind !== 'star' && obj.id !== 'earth' && <DistanceChart obj={obj} ms={Math.round(ms / 864e5) * 864e5} />}
       <dl className="kv">
         {obj.kind !== 'star' && <Fact k="From the Sun">{rSun.toFixed(3)} AU</Fact>}
         {obj.id !== 'earth' && <Fact k="From Earth">{rEarth < 0.5 ? `${fmtLd(rEarth)} LD` : `${rEarth.toFixed(3)} AU`} <span className="faint">· {fmtKm(rEarth)}</span></Fact>}
@@ -148,6 +245,7 @@ function ObjectList({ planets, asteroids, selected, onSelect, liveCount, pending
           : status === 'loading' ? 'Connecting to the backend…'
           : pending > 0 ? `Loading orbits from NASA… ${liveCount} ready`
           : `${liveCount} live ${liveCount === 1 ? 'orbit' : 'orbits'} from upcoming close approaches, plus notable asteroids.`}
+        <br />Drag to orbit · scroll to zoom · space to pause
       </div>
     </aside>
   )
@@ -182,6 +280,7 @@ export function Explorer({ sub }) {
   }, [])
 
   const all = useMemo(() => [SUN, ...PLANETS, ...asteroids], [asteroids])
+  const approaches = useApproaches(asteroids)
   const obj = all.find((o) => o.id === selected)
 
   useEffect(() => {
@@ -212,12 +311,7 @@ export function Explorer({ sub }) {
         <ObjectList planets={PLANETS} asteroids={asteroids} selected={selected} onSelect={onSelect} liveCount={liveCount} pending={pending} status={status} />
       </div>
       <Info key={selected} obj={obj} clock={clock.current} setRate={setRate} onClose={() => onSelect(null)} />
-      <TimeBar clock={clock.current} rate={rate} setRate={setRate} />
-      <div className="x-legend faint">
-        <span><i style={{ background: 'var(--pha)' }} />Potentially hazardous</span>
-        <span><i style={{ background: 'var(--accent)' }} />Near-Earth asteroid</span>
-        <span className="hide-sm">Drag to orbit · scroll to zoom · space to pause</span>
-      </div>
+      <Timeline clock={clock.current} rate={rate} setRate={setRate} approaches={approaches} selected={selected} onPick={onSelect} />
     </div>
   )
 }
