@@ -10,7 +10,10 @@ server {
 
     # The backend has no CORS config, so the browser talks to it through this proxy
     location /api/ {
-        proxy_pass ${BACKEND_URL};
+        # Resolve the backend per request through Docker's DNS, so nginx starts even if the backend isn't up yet
+        resolver 127.0.0.11 valid=30s ipv6=off;
+        set $backend ${BACKEND_URL};
+        proxy_pass $backend;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -24,7 +27,13 @@ server {
         try_files $uri =404;
     }
 
+    # index.html must never be cached, or browsers keep loading the previous release's assets after a deploy
+    location = /index.html {
+        add_header Cache-Control "no-cache";
+    }
+
     location / {
+        add_header Cache-Control "no-cache";
         try_files $uri $uri/ /index.html;
     }
 }
