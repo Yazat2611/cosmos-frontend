@@ -8,9 +8,10 @@ import { Drawer } from './components/Drawer.jsx'
 import { Overview } from './views/Overview.jsx'
 import { Asteroids } from './views/Asteroids.jsx'
 import { Earth } from './views/Earth.jsx'
+import { Explorer } from './views/Explorer.jsx'
 
-const NAMES = { overview: 'Overview', asteroids: 'Close approaches', earth: 'Earth events' }
-const NAV = [['overview', 'overview'], ['asteroids', 'rock'], ['earth', 'earth']]
+const NAMES = { overview: 'Overview', explorer: 'Solar system', asteroids: 'Close approaches', earth: 'Earth events' }
+const NAV = [['overview', 'overview'], ['explorer', 'orbit'], ['asteroids', 'rock'], ['earth', 'earth']]
 const visited = new Set()
 
 // Command palette: opened from the keyboard many times a day, so it appears and leaves instantly
@@ -123,6 +124,7 @@ export default function App() {
 
   let crumb = null
   if (page === 'asteroids' && sub) crumb = rows.find((r) => r.designation === sub)?.fullName || sub
+  if (page === 'explorer' && sub) crumb = rows.find((r) => r.designation === sub)?.fullName || sub.replace(/^./, (c) => c.toUpperCase())
   if (page === 'earth' && sub) crumb = events.find((e) => e.eventId === sub)?.title
 
   return (
@@ -155,8 +157,9 @@ export default function App() {
               </button>
             </div>
           </header>
-          <main className="view" ref={viewRef} tabIndex={-1} key={page}>
+          <main className={page === 'explorer' || page === 'earth' ? 'view view-full' : 'view'} ref={viewRef} tabIndex={-1} key={page}>
             {page === 'overview' && <Overview />}
+            {page === 'explorer' && <Explorer sub={sub} />}
             {page === 'asteroids' && <Asteroids activeDes={sub} />}
             {page === 'earth' && <Earth sub={sub} />}
           </main>

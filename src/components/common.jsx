@@ -13,6 +13,9 @@ const PATHS = {
   page: 'M5.5 3A1.5 1.5 0 0 0 4 4.5v11A1.5 1.5 0 0 0 5.5 17h9a1.5 1.5 0 0 0 1.5-1.5V8l-5-5zm5 1.5L14.5 8.5h-4z',
   pause: 'M6 4.5h2.6v11H6zM11.4 4.5H14v11h-2.6z',
   play: 'M6.5 4.3v11.4L15.6 10z',
+  rewind: 'M9.5 4.6v10.8L2.8 10zM17.2 4.6v10.8L10.5 10z',
+  forward: 'M10.5 4.6v10.8l6.7-5.4zM2.8 4.6v10.8L9.5 10z',
+  orbit: 'M10 7.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6zM10 3c4.6 0 8.2 3.1 8.2 7S14.6 17 10 17 1.8 13.9 1.8 10 5.4 3 10 3zm0 1.7c-3.7 0-6.5 2.4-6.5 5.3s2.8 5.3 6.5 5.3 6.5-2.4 6.5-5.3S13.7 4.7 10 4.7z',
 }
 export function Icon({ name }) {
   return <svg viewBox="0 0 20 20" aria-hidden="true"><path fillRule="evenodd" d={PATHS[name]} /></svg>
