@@ -23,7 +23,7 @@ function SortHead({ id, sort, children, ...rest }) {
 }
 
 export function Asteroids({ activeDes }) {
-  const { rows, status, hazard } = useData()
+  const { rows, status } = useData()
   const [filter, setFilter] = useState('all')
   const [q, setQ] = useState('')
   const [sort, setSort] = useState({ key: 'date', dir: 1 })
@@ -38,14 +38,13 @@ export function Asteroids({ activeDes }) {
 
   const near = rows.filter((r) => toLd(r.distanceAu) <= 10).length
   const pha = rows.filter((r) => r.pha).length
-  const scanning = hazard.checked < hazard.total
 
   return (
     <div>
       <div className="page-head">
         <div>
           <h1>Close approaches</h1>
-          <p>Every asteroid passing within 0.5 AU of Earth in the next two months, from NASA's close-approach data. Refreshed daily at 02:00.</p>
+          <p>Every asteroid passing within 0.5 AU of Earth in the next two months, from NASA's close-approach data. Refreshed hourly.</p>
         </div>
       </div>
       <BackendNotice />
@@ -55,7 +54,6 @@ export function Asteroids({ activeDes }) {
           value={filter}
           onChange={setFilter}
         />
-        {scanning && <span className="faint" style={{ fontSize: 12 }}>Checking hazard status with NASA: {hazard.checked} of {hazard.total}</span>}
         <div className="grow" />
         <label className="input search"><Icon name="search" /><input placeholder="Filter by designation" value={q} onChange={(e) => setQ(e.target.value)} /></label>
       </div>

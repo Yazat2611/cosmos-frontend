@@ -156,7 +156,7 @@ function Timeline({ list }) {
 }
 
 export function Overview() {
-  const { rows, events, status, hazard } = useData()
+  const { rows, events, status } = useData()
   if (status === 'loading') return <div className="ov-grid"><div style={{ gridColumn: 'span 12' }}><Loading /></div></div>
   const upcoming = rows.filter((r) => r.date > Date.now())
   const open = events.filter((e) => !e.closed)
@@ -173,7 +173,6 @@ export function Overview() {
   const fastest = upcoming.reduce((m, r) => (r.relativeVelocity > m.relativeVelocity ? r : m))
   const insideMoon = upcoming.filter((r) => toLd(r.distanceAu) < 1).length
   const phas = upcoming.filter((r) => r.pha)
-  const scanning = hazard.checked < hazard.total
 
   return (
     <div className="ov-grid">
@@ -186,7 +185,7 @@ export function Overview() {
         <a className="sub" href={link(fastest.designation)}>{fastest.fullName}</a>
       </Stat>
       <Stat label={<>Potentially hazardous {phas.length > 0 && <span className="badge pha">PHA</span>}</>} value={phas.length}>
-        <div className="sub">{scanning ? `Checking ${hazard.checked} of ${hazard.total} with NASA…` : `${plural(insideMoon, 'pass', 'passes')} inside the Moon's orbit`}</div>
+        <div className="sub">{`${plural(insideMoon, 'pass', 'passes')} inside the Moon's orbit`}</div>
       </Stat>
 
       <section className="card timeline-card">
