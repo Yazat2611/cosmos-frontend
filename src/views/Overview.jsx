@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useData } from '../lib/data.jsx'
-import { flyby, reduced } from '../lib/motion.js'
-import { absDate, esc, fmtLd, fmtLdValue, fmtSize, p2, plural, relDate, sizeM, toLd } from '../lib/format.js'
-import { BackendNotice, Loading, catVar, lastGeo } from '../components/common.jsx'
-import { WorldMap } from '../components/WorldMap.jsx'
+import { reduced } from '../lib/motion.js'
+import { absDate, esc, fmtKm, fmtLd, fmtSize, p2, plural, relDate, sizeM, toLd } from '../lib/format.js'
+import { BackendNotice, CAT_LABELS, Icon, Loading, catVar, lastGeo } from '../components/common.jsx'
 import { go } from '../lib/ui.js'
 
 const EASE_OUT = 'cubic-bezier(0.23, 1, 0.32, 1)'
@@ -44,44 +43,102 @@ function Countdown({ target }) {
   )
 }
 
-function Hero({ next }) {
-  const canvas = useRef(null)
-  const { designation, distanceAu, fullName } = next
+// A small live 3D view, loaded on demand so three.js stays out of the first download
+function Mini3D({ kind, events, className, label }) {
+  const host = useRef(null)
+  const labels = useRef(null)
   useEffect(() => {
-    const scene = flyby(canvas.current, { ld: toLd(distanceAu), label: fullName, seed: designation, fmt: fmtLdValue })
-    return () => scene.destroy()
-  }, [designation, distanceAu, fullName])
+    let inst = null
+    let stopped = false
+    const load = kind === 'solar' ? import('../lib/solar3d.js') : import('../lib/globe3d.js')
+    load.then((m) => {
+      if (stopped) return
+      inst = kind === 'solar'
+        ? m.createScene(host.current, labels.current, { cam: [0, 10, 14], autoRotate: true, noZoom: true })
+        : m.createGlobe(host.current, labels.current, events, { colorFor: catColor, onPick: () => go('#/earth', 'pointer'), dist: 3.1, zoom: false, spin: 0.5 })
+      if (kind === 'solar') inst.setBelt(false)
+    })
+    return () => { stopped = true; inst?.destroy() }
+  }, [kind, events])
   return (
-    <section className="card hero">
-      <div className="hero-copy">
+    <div className={`mini3d ${className || ''}`} aria-label={label} role="img">
+      <div className="mini3d-host" ref={host} />
+      <div className="mini3d-labels" ref={labels} aria-hidden="true" />
+    </div>
+  )
+}
+const catColor = (id) => getComputedStyle(document.documentElement).getPropertyValue(`--c-${id}`).trim() || '#848b7e'
+
+function Hero({ next, then }) {
+  const { designation, distanceAu, fullName } = next
+  const ld = toLd(distanceAu)
+  return (
+    <section className="card mc-hero">
+      <div className="mc-hero-copy">
         <div>
-          <div className="eyebrow"><span className="live" />Next close approach</div>
+          <div className="eyebrow"><span className="live" />Next close approach · {relDate(next.date)}</div>
           <h2>{fullName}</h2>
+          <div className="badges">
+            {next.pha ? <span className="badge pha">Potentially hazardous</span> : <span className="badge">Near-Earth</span>}
+            {ld < 1 && <span className="badge accent">Inside the Moon's orbit</span>}
+          </div>
         </div>
         <Countdown target={next.date.getTime()} />
-        <dl className="hero-facts">
-          <div><dt>Miss distance</dt><dd>{fmtLd(distanceAu)} LD</dd></div>
-          <div><dt>Velocity</dt><dd>{next.relativeVelocity.toFixed(1)} km/s</dd></div>
-          <div><dt>Est. size</dt><dd>{fmtSize(next.absoluteMagnitude)}</dd></div>
+        <dl className="mc-facts">
+          <div><dt>Closest</dt><dd className="num">{fmtLd(distanceAu)} LD<span>{fmtKm(distanceAu)}</span></dd></div>
+          <div><dt>Speed</dt><dd className="num">{next.relativeVelocity.toFixed(1)} km/s<span>relative to Earth</span></dd></div>
+          <div><dt>Size</dt><dd className="num">≈ {fmtSize(next.absoluteMagnitude)}<span>{next.absoluteMagnitude != null ? `H ${next.absoluteMagnitude.toFixed(1)}` : 'estimated'}</span></dd></div>
+          <div><dt>When</dt><dd className="num">{absDate(next.date, false)}<span>{p2(next.date.getUTCHours())}:{p2(next.date.getUTCMinutes())} UTC</span></dd></div>
         </dl>
-        <div><a className="btn" href={link(designation)}>View orbit &amp; details</a></div>
+        {then && <p className="mc-then faint">Then <a href={link(then.designation)}>{then.fullName}</a>, {relDate(then.date)}, at <b className="num">{fmtLd(then.distanceAu)} LD</b>{toLd(then.distanceAu) < 1 ? ', closer than the Moon' : ''}</p>}
+        <div className="mc-actions">
+          <a className="btn primary" href={`#/explorer/${encodeURIComponent(designation)}`}>Follow in Solar system <Icon name="arrow" /></a>
+          <a className="btn" href={link(designation)}>Details</a>
+        </div>
       </div>
-      <div className="hero-art">
-        <canvas className="hero-canvas" ref={canvas} aria-label={`Animation of ${fullName} passing Earth at ${fmtLd(distanceAu)} lunar distances`} />
+      <Mini3D kind="solar" className="mc-solar" label="Live view of the inner solar system" />
+      <span className="mc-tag" aria-hidden="true">Live · inner solar system</span>
+    </section>
+  )
+}
+
+function EarthCard({ events }) {
+  const open = useMemo(() => events.filter((e) => !e.closed), [events])
+  const cats = Object.entries(open.reduce((m, e) => ({ ...m, [e.categoryId]: (m[e.categoryId] || 0) + 1 }), {})).sort((a, b) => b[1] - a[1])
+  const latest = [...events].sort((a, b) => lastGeo(b).date - lastGeo(a).date).slice(0, 4)
+  return (
+    <section className="card mc-earth">
+      {events.length > 0 ? <Mini3D kind="globe" events={events} className="mc-globe" label="Live globe of natural events" /> : <div className="mini3d mc-globe" />}
+      <div className="mc-earth-copy">
+        <div className="eyebrow"><span className="live" />Earth right now</div>
+        <h3><b className="num">{open.length}</b> active {open.length === 1 ? 'event' : 'events'}</h3>
+        <div className="mc-cats">{cats.map(([id, n]) => <span key={id}><i style={{ background: catVar(id) }} />{CAT_LABELS[id] || id} <b className="num">{n}</b></span>)}</div>
+        <ul className="mc-list">
+          {latest.map((e) => (
+            <li key={e.eventId}>
+              <a href={`#/earth/${e.eventId}`}>
+                <i style={{ background: catVar(e.categoryId) }} />
+                <span className="t">{e.title}</span>
+                <span className="m faint">{e.closed ? 'ended' : relDate(lastGeo(e).date)}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+        <a className="btn" href="#/earth">Open Earth events <Icon name="arrow" /></a>
       </div>
     </section>
   )
 }
 
 // A soft light follows the pointer across the card; only that element's transform changes
-function Stat({ label, value, unit, children }) {
+function Stat({ label, value, unit, tone, children }) {
   const spot = useRef(null)
   const onMove = (e) => {
     const r = e.currentTarget.getBoundingClientRect()
     spot.current.style.transform = `translate(${e.clientX - r.left - 150}px, ${e.clientY - r.top - 150}px)`
   }
   return (
-    <div className="card stat" onPointerMove={onMove}>
+    <div className={`card stat${tone ? ` ${tone}` : ''}`} onPointerMove={onMove}>
       <span className="spot" ref={spot} />
       <div className="label">{label}</div>
       <div className="value">{value}{unit && <small>{unit}</small>}</div>
@@ -137,6 +194,7 @@ function Timeline({ list }) {
               data-des={a.designation}
               data-tip={`<b>${esc(a.fullName)}</b><br>${fmtLd(a.distanceAu)} LD · ${a.relativeVelocity.toFixed(1)} km/s · ~${fmtSize(a.absoluteMagnitude)}<br><span class='faint'>${absDate(a.date)}</span>`}
             >
+              <line x1={x(a.date).toFixed(1)} x2={x(a.date).toFixed(1)} y1={y(ld).toFixed(1)} y2={H - pad.b} className="stem" style={{ stroke: col }} />
               <circle cx={x(a.date).toFixed(1)} cy={y(ld).toFixed(1)} r={r(a.absoluteMagnitude).toFixed(1)} fill={col} fillOpacity=".22" stroke={col} strokeWidth="1.2" />
             </g>
           )
@@ -156,66 +214,63 @@ function Timeline({ list }) {
 }
 
 export function Overview() {
-  const { rows, events, status, hazard } = useData()
-  if (status === 'loading') return <div className="ov-grid"><div style={{ gridColumn: 'span 12' }}><Loading /></div></div>
-  const upcoming = rows.filter((r) => r.date > Date.now())
-  const open = events.filter((e) => !e.closed)
+  const { rows, events, status } = useData()
+  if (status === 'loading') return <div className="mc"><div className="mc-wide"><Loading height={420} /></div></div>
+  const now = Date.now()
+  const upcoming = rows.filter((r) => r.date > now).sort((a, b) => a.date - b.date)
   const next = upcoming[0]
   if (!next) {
     return (
-      <div>
-        <BackendNotice />
-        {status === 'ready' && <div className="card empty"><b>No upcoming approaches yet</b>They'll appear after the next nightly refresh from NASA.</div>}
+      <div className="mc">
+        <div className="mc-wide"><BackendNotice /></div>
+        {status === 'ready' && <div className="card empty mc-wide"><b>No upcoming approaches yet</b>They'll appear after the next refresh from NASA.</div>}
       </div>
     )
   }
-  const closest = upcoming.reduce((m, r) => (r.distanceAu < m.distanceAu ? r : m))
-  const fastest = upcoming.reduce((m, r) => (r.relativeVelocity > m.relativeVelocity ? r : m))
-  const insideMoon = upcoming.filter((r) => toLd(r.distanceAu) < 1).length
+  const insideMoon = upcoming.filter((r) => toLd(r.distanceAu) < 1)
   const phas = upcoming.filter((r) => r.pha)
-  const scanning = hazard.checked < hazard.total
+  const open = events.filter((e) => !e.closed)
+  const closest = [...upcoming].sort((a, b) => a.distanceAu - b.distanceAu).slice(0, 6)
+  const today = new Date()
 
   return (
-    <div className="ov-grid">
-      <Hero next={next} />
-      <Stat label="Approaches, next 60 days" value={upcoming.length}><div className="sub">Within 0.5 AU of Earth</div></Stat>
-      <Stat label="Closest pass" value={fmtLd(closest.distanceAu)} unit="LD">
-        <a className="sub" href={link(closest.designation)}>{closest.fullName} · {absDate(closest.date, false)}</a>
-      </Stat>
-      <Stat label="Fastest" value={fastest.relativeVelocity.toFixed(1)} unit="km/s">
-        <a className="sub" href={link(fastest.designation)}>{fastest.fullName}</a>
-      </Stat>
-      <Stat label={<>Potentially hazardous {phas.length > 0 && <span className="badge pha">PHA</span>}</>} value={phas.length}>
-        <div className="sub">{scanning ? `Checking ${hazard.checked} of ${hazard.total} with NASA…` : `${plural(insideMoon, 'pass', 'passes')} inside the Moon's orbit`}</div>
-      </Stat>
-
-      <section className="card timeline-card">
+    <div className="mc">
+      <div className="mc-head mc-wide">
+        <div className="eyebrow">{absDate(today, true)}</div>
+        <h1>Overview</h1>
+      </div>
+      <Hero next={next} then={upcoming[1]} />
+      <EarthCard events={events} />
+      <div className="mc-stats mc-wide">
+        <Stat label="Close approaches" value={upcoming.length}><div className="sub">next 60 days, within 0.5 AU</div></Stat>
+        <Stat label="Within 1 LD" value={insideMoon.length}><div className="sub">closer than the Moon</div></Stat>
+        <Stat label={<>Potentially hazardous {phas.length > 0 && <span className="badge pha">PHA</span>}</>} value={phas.length} tone="pha"><div className="sub">passing this window</div></Stat>
+        <Stat label={<span className="eyebrow"><span className="live" />Active Earth events</span>} value={open.length}><div className="sub">{plural(events.length, 'event', 'events')} in the feed</div></Stat>
+      </div>
+      <section className="card mc-chart">
         <div className="card-head">
-          <h2>Next 60 days · miss distance (lunar distances, log)</h2>
-          <span className="faint" style={{ fontSize: 12 }}>Dot size ≈ estimated diameter</span>
+          <div><div className="eyebrow">Next 60 days · distance in lunar distances (LD)</div><h3>Close approaches by distance</h3></div>
+          <div className="mc-legend faint"><span><i style={{ background: 'var(--accent)' }} />Near-Earth</span><span><i style={{ background: 'var(--pha)' }} />Potentially hazardous</span><span>Dot size ≈ size</span></div>
         </div>
         <Timeline list={upcoming} />
       </section>
-
-      <section className="card events-card">
-        <div className="card-head">
-          <h2>Open Earth events</h2>
-          <a className="btn ghost" href="#/earth" style={{ height: 26, padding: '0 8px' }}>{open.length} open</a>
-        </div>
-        <a className="mini-map" href="#/earth" aria-label="Open the Earth events map"><WorldMap events={open} mini /></a>
-        <ul className="ev-list">
-          {open.slice().sort((a, b) => lastGeo(b).date - lastGeo(a).date).slice(0, 4).map((e) => (
-            <li key={e.eventId}>
-              <a href={`#/earth/${e.eventId}`}>
-                <span className="cat-dot" style={{ '--cat': catVar(e.categoryId) }} />
-                <span className="t">{e.title}</span>
-                <span className="faint num" style={{ fontSize: 12 }}>{relDate(lastGeo(e).date)}</span>
+      <section className="card mc-passes">
+        <div className="eyebrow">Coming up</div>
+        <h3>Closest passes</h3>
+        <ul className="mc-list">
+          {closest.map((r) => (
+            <li key={r.id ?? `${r.designation}${+r.date}`}>
+              <a href={link(r.designation)}>
+                <i style={{ background: r.pha ? 'var(--pha)' : 'var(--accent)' }} />
+                <span className="t">{r.fullName}</span>
+                <span className={`m num${toLd(r.distanceAu) < 1 ? ' close' : ''}`}>{fmtLd(r.distanceAu)} LD</span>
+                <span className="m faint">{relDate(r.date)}</span>
               </a>
             </li>
           ))}
         </ul>
+        <a className="btn" href="#/asteroids">All asteroids <Icon name="arrow" /></a>
       </section>
     </div>
   )
 }
-

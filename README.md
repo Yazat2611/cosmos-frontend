@@ -25,12 +25,19 @@ The Vite dev server proxies `/api` to `http://localhost:8080`, so the backend ne
 
 | Screen | Endpoint |
 | --- | --- |
-| Overview, Close approaches | `GET /api/asteroids/all` |
+| Overview (next approach, stats, 60-day chart, closest passes) | `GET /api/asteroids/all`, `GET /api/earth-events` |
+| Asteroids (radar, size scale, cards or table) | `GET /api/asteroids/all`, then `GET /api/asteroids/details/{designation}` for each card shown, for its orbit sketch and class |
 | Solar system (orbits of the closest and hazardous approaches) | `GET /api/asteroids/all`, then `GET /api/asteroids/details/{designation}` for up to 40 objects |
 | Asteroid panel, hazard badges | `GET /api/asteroids/details/{designation}` |
 | Earth events | `GET /api/earth-events` |
 
 Hazard status isn't in the approaches list. The app looks up objects with H <= 22 (only those can be potentially hazardous) two at a time, and caches the results in the browser for a week.
+
+## Overview and Asteroids
+
+The **Overview** opens on the next close approach: a live countdown, its distance, speed and size, and a small live 3D view of the inner solar system beside it. Next to it, a slowly turning globe shows the active Earth events. Below are the four headline numbers, a 60-day chart of every pass by distance (log scale, with the Moon's distance marked), and the closest passes.
+
+**Asteroids** starts with an approach radar: Earth in the middle, the next 60 days around the dial and distance outward, with the Moon's distance as a dashed ring. Beside it are the closest and largest passes and a size scale that sets each asteroid against landmarks, from a bus to Central Park. Below, every asteroid gets a card with a small orbit sketch and a bar showing how close it comes compared with the Moon. The table view is one click away and the choice is remembered. Press `/` to search.
 
 ## Solar system explorer
 

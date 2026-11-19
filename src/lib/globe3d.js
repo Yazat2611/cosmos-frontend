@@ -63,7 +63,7 @@ export function sunDir(ms, out = new THREE.Vector3()) {
 }
 
 // 3D globe for the Earth events page. Imperative, so the React page only passes events and a selection in.
-export function createGlobe(host, labelsHost, events, { colorFor, onPick }) {
+export function createGlobe(host, labelsHost, events, { colorFor, onPick, dist = 3.6, zoom = true, spin = 0.35 }) {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
   const renderer = new THREE.WebGLRenderer({ antialias: true })
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2))
@@ -72,9 +72,9 @@ export function createGlobe(host, labelsHost, events, { colorFor, onPick }) {
   scene.background = new THREE.Color('#050706')
   const camera = new THREE.PerspectiveCamera(40, 1, 0.01, 100)
   // Open on the terminator, so both the lit and the night side show
-  { const u = new Date(); const sunLon = -((u.getUTCHours() + u.getUTCMinutes() / 60) - 12) * 15; camera.position.copy(toVec(18, ((sunLon + 55 + 540) % 360) - 180, 3.6)) }
+  { const u = new Date(); const sunLon = -((u.getUTCHours() + u.getUTCMinutes() / 60) - 12) * 15; camera.position.copy(toVec(18, ((sunLon + 55 + 540) % 360) - 180, dist)) }
   const controls = new OrbitControls(camera, renderer.domElement)
-  Object.assign(controls, { enableDamping: true, dampingFactor: 0.08, minDistance: 1.35, maxDistance: 7, enablePan: false, autoRotate: !reduced, autoRotateSpeed: 0.35, rotateSpeed: 0.5 })
+  Object.assign(controls, { enableDamping: true, dampingFactor: 0.08, minDistance: 1.35, maxDistance: 7, enablePan: false, autoRotate: !reduced, autoRotateSpeed: spin, rotateSpeed: 0.5, enableZoom: zoom })
 
   // Stars
   {
