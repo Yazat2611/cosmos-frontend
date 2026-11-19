@@ -10,7 +10,8 @@ import { Asteroids } from './views/Asteroids.jsx'
 import { Earth } from './views/Earth.jsx'
 import { Explorer } from './views/Explorer.jsx'
 
-const NAMES = { overview: 'Overview', explorer: 'Solar system', asteroids: 'Close approaches', earth: 'Earth events' }
+const NAMES = { overview: 'Overview', explorer: 'Solar system', asteroids: 'Asteroids', earth: 'Earth events' }
+const SHORT = { explorer: 'Solar', earth: 'Earth' }
 const NAV = [['overview', 'overview'], ['explorer', 'orbit'], ['asteroids', 'rock'], ['earth', 'earth']]
 const visited = new Set()
 
@@ -90,7 +91,7 @@ function ConnectionPill() {
 export default function App() {
   const hash = useHash()
   const { page, sub } = parseHash(hash)
-  const { rows, events, status } = useData()
+  const { status } = useData()
   const [palette, setPalette] = useState(false)
   const viewRef = useRef(null)
 
@@ -122,48 +123,32 @@ export default function App() {
     return () => document.removeEventListener('keydown', onKey)
   }, [])
 
-  let crumb = null
-  if (page === 'asteroids' && sub) crumb = rows.find((r) => r.designation === sub)?.fullName || sub
-  if (page === 'explorer' && sub) crumb = rows.find((r) => r.designation === sub)?.fullName || sub.replace(/^./, (c) => c.toUpperCase())
-  if (page === 'earth' && sub) crumb = events.find((e) => e.eventId === sub)?.title
-
   return (
     <>
       <div className="app">
-        <aside className="sidebar" aria-label="Main">
-          <a className="brand" href="#/overview">
-            <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="12" r="4.2" fill="currentColor" />
-              <ellipse cx="12" cy="12" rx="10.5" ry="4.6" fill="none" stroke="currentColor" strokeOpacity=".55" strokeWidth="1.4" transform="rotate(-24 12 12)" />
-            </svg>
+        <header className="topbar">
+          <a className="brand" href="#/overview" aria-label="Cosmos Hub home">
+            <i className="logo" aria-hidden="true" />
             <span>Cosmos Hub</span>
           </a>
-          <nav className="nav">
+          <nav className="nav" aria-label="Main">
             {NAV.map(([k, icon]) => (
-              <a key={k} href={`#/${k}`} aria-current={page === k ? 'page' : undefined}><Icon name={icon} /><span>{NAMES[k]}</span></a>
+              <a key={k} href={`#/${k}`} aria-current={page === k ? 'page' : undefined}><Icon name={icon} /><span className="long">{NAMES[k]}</span><span className="short">{SHORT[k] || NAMES[k]}</span></a>
             ))}
           </nav>
-          <div className="sidebar-foot"><ConnectionPill /></div>
-        </aside>
-        <div className="main">
-          <header className="topbar">
-            <div className="crumbs">
-              <span>{NAMES[page]}</span>
-              {crumb && <><span className="faint">/</span><b>{crumb}</b></>}
-            </div>
-            <div className="topbar-right">
-              <button className="search-trigger" type="button" onClick={() => setPalette(true)}>
-                <Icon name="search" /><span>Search asteroids, events…</span><kbd>⌘K</kbd>
-              </button>
-            </div>
-          </header>
-          <main className={page === 'explorer' || page === 'earth' ? 'view view-full' : 'view'} ref={viewRef} tabIndex={-1} key={page}>
-            {page === 'overview' && <Overview />}
-            {page === 'explorer' && <Explorer sub={sub} />}
-            {page === 'asteroids' && <Asteroids activeDes={sub} />}
-            {page === 'earth' && <Earth sub={sub} />}
-          </main>
-        </div>
+          <div className="topbar-right">
+            <button className="search-trigger" type="button" onClick={() => setPalette(true)} aria-label="Search">
+              <Icon name="search" /><span>Search</span><kbd>⌘K</kbd>
+            </button>
+            <ConnectionPill />
+          </div>
+        </header>
+        <main className={page === 'explorer' || page === 'earth' ? 'view view-full' : 'view'} ref={viewRef} tabIndex={-1} key={page}>
+          {page === 'overview' && <Overview />}
+          {page === 'explorer' && <Explorer sub={sub} />}
+          {page === 'asteroids' && <Asteroids activeDes={sub} />}
+          {page === 'earth' && <Earth sub={sub} />}
+        </main>
       </div>
       <Drawer des={page === 'asteroids' ? sub : null} />
       {palette && <Palette onClose={() => setPalette(false)} />}

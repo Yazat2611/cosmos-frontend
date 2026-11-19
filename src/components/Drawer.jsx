@@ -195,6 +195,7 @@ function Body({ des, onClose }) {
           <button className="icon-btn" type="button" aria-label="Copy designation" data-tip="Copy designation" onClick={() => { navigator.clipboard?.writeText(des).catch(() => {}); setCopied(true) }}>
             <span className="swap"><span data-hide={copied ? '' : undefined}><Icon name="copy" /></span><span data-hide={copied ? undefined : ''}><Icon name="check" /></span></span>
           </button>
+          <a className="icon-btn" href={`#/explorer/${encodeURIComponent(des)}`} aria-label="Show in the Solar system" data-tip="Show in the Solar system"><Icon name="orbit" /></a>
           <a className="icon-btn" href={`https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html#/?sstr=${encodeURIComponent(des)}`} target="_blank" rel="noopener noreferrer" aria-label="Open in JPL Small-Body Database" data-tip="Open in JPL SBDB"><Icon name="ext" /></a>
           <button className="icon-btn" type="button" ref={closeBtn} aria-label="Close" onClick={onClose}><Icon name="close" /></button>
         </div>
